@@ -7,7 +7,7 @@ import Header from '../components/Header';
 import Footer from '../components/Footer';
 
 const Login = () => {
-  const [isAdminMode, setIsAdminMode] = useState(false);
+ const [isAdminMode, setIsAdminMode] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -20,9 +20,11 @@ const Login = () => {
   useEffect(() => {
     const token = localStorage.getItem('accessToken');
     const role = localStorage.getItem('userRole');
+    
     if (token) {
       if (role === 'ADMIN') navigate('/admin/dashboard');
       else if (role === 'RESIDENT') navigate('/dashboard/resident');
+      else if (role === 'ACCOUNTANT') navigate('/accountant/dashboard');
       else if (role === 'SUPPLIER') navigate('/supplier/portal');
     }
   }, [navigate]);
@@ -38,19 +40,27 @@ const Login = () => {
 
     try {
       const { data } = await authAPI.login(payload);
+      
       if (data.success) {
         localStorage.setItem('accessToken', data.accessToken);
         localStorage.setItem('userEmail', data.user.email);
         localStorage.setItem('userRole', data.user.role);
+        localStorage.setItem('userStatus', data.user.status || 'PENDING');
         localStorage.setItem('internal_user_id', data.user.id);
-        
-        toast.success("Welcome back to HomeAvatar", {
-          style: { background: '#1f1b16', color: '#a88d5e', border: '1px solid #a88d5e/20' }
-        });
+
+        if (data.user.role === 'RESIDENT') {
+            localStorage.setItem('resident_id', data.user.resident_id);
+        } else if (data.user.role === 'SUPPLIER') {
+            localStorage.setItem('profile_id', data.user.profile_id);
+        }
+
+        toast.success("Authentication Successful!", { icon: '🔑' });
 
         setTimeout(() => {
           if (data.user.role === 'ADMIN') navigate('/admin/dashboard');
           else if (data.user.role === 'RESIDENT') navigate('/dashboard/resident');
+          else if (data.user.role === 'ACCOUNTANT') navigate('/accountant/dashboard');
+          else if (data.user.role === 'SUPPLIER') navigate('/supplier/portal');
           else navigate('/');
         }, 1500);
       }
@@ -60,7 +70,6 @@ const Login = () => {
       setLoading(false);
     }
   };
-
   return (
     <div className="bg-[#fbfbfb] min-h-screen">
       <Header />
