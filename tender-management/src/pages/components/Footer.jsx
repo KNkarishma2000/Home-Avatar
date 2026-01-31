@@ -1,7 +1,8 @@
 import React from 'react';
 import { Building, Briefcase, Sparkles, MapPin, Mail, Phone } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-
+import LOGO from '../../assets/logo.png'
+import Main from '../../assets/shortlogo.png'
 const Footer = () => {
   const navigate = useNavigate();
 
@@ -16,13 +17,11 @@ const Footer = () => {
           {/* Brand & Editorial Column */}
           <div className="md:col-span-5 space-y-8">
             <div className="flex items-center gap-4 group cursor-pointer" onClick={() => navigate('/')}>
-              <div className="bg-[#a88d5e] p-2.5 rounded-full text-[#1f1b16]">
-                <Building size={20} />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-2xl font-serif italic text-white tracking-tight leading-none">HomeAvatar</span>
-                <span className="text-[9px] uppercase tracking-[0.4em] text-[#a88d5e] font-bold">Living Redefined</span>
-              </div>
+                <img
+                          src={LOGO}
+                          alt="logo"
+                          className="w-[130px] sm:w-[36px] md:w-[150px]"
+                        />
             </div>
             
             <p className="text-gray-400 font-serif italic leading-relaxed text-lg max-w-sm">
