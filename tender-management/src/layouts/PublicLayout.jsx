@@ -299,7 +299,9 @@ const WindsorLiving = () => {
                   <div className="absolute top-0 left-0 w-1 h-full bg-[#a88d5e] transform scale-y-0 group-hover:scale-y-100 transition-transform origin-top"></div>
                   <Megaphone size={18} className="text-[#a88d5e] mb-4" />
                   <h3 className="font-serif text-lg mb-2 group-hover:text-[#a88d5e] transition-colors">{notice.title}</h3>
-                  <p className="text-gray-500 text-xs line-clamp-2 italic mb-4">{notice.content}</p>
+             <p className="text-gray-500 text-xs line-clamp-2 italic mb-4">
+  {notice.content?.replace(/<[^>]*>?/gm, '').replace(/&nbsp;/g, ' ')}
+</p>
                   <div className="text-[9px] font-bold uppercase text-[#a88d5e] flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">Read Details <ArrowRight size={10} /></div>
                 </motion.div>
               ))}
@@ -330,6 +332,7 @@ const WindsorLiving = () => {
         {/* MARKETPLACE */}
    <section id="marketplace" className="py-24 bg-[#f8f8f8] px-6">
           <div className="max-w-7xl mx-auto">
+          
             <div className="text-center mb-16"><h2 className="text-[25px] sm:text-4xl md:text-5xl font-serif text-[#1f1b16]">COMMUNITY MARKETPLACE</h2></div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {marketplace.slice(0, 3).map((item) => (
@@ -520,7 +523,9 @@ const NewsCard = ({ id, img, date, title, desc }) => (
       <div className="p-8 flex flex-col flex-1">
         <div className="text-[#a88d5e] font-serif italic text-sm mb-2">{date}</div>
         <h3 className="text-xl font-serif mb-4 group-hover:text-[#a88d5e] transition-colors line-clamp-2 min-h-[3.5rem]">{title}</h3>
-        <p className="text-gray-500 text-sm mb-6 line-clamp-3 italic">{desc}</p>
+       <p className="text-gray-500 text-sm mb-6 line-clamp-3 italic">
+  {desc?.replace(/<[^>]*>?/gm, '').replace(/&nbsp;/g, ' ')}
+</p>
         <div className="mt-auto flex items-center gap-2 text-[#a88d5e] font-bold text-xs uppercase tracking-widest">
           Read More <ArrowRight size={16} className="group-hover:translate-x-2 transition-transform" />
         </div>

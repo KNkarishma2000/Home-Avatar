@@ -25,6 +25,13 @@ const BlogDetails = () => {
     };
     fetchDetails();
   }, [id]);
+  const cleanText = (str) => {
+  if (!str) return "";
+  return str
+    .replace(/<[^>]*>?/gm, '') // Remove tags
+    .replace(/&nbsp;/g, ' ')   // Fix spaces
+    .replace(/&amp;/g, '&');   // Fix ampersands
+};
 
   if (loading) return <div className="h-screen flex items-center justify-center font-serif italic text-[#a88d5e] animate-pulse text-lg tracking-widest">Opening Story...</div>;
   if (!blog) return <div className="h-screen flex items-center justify-center font-serif text-[#1f1b16]">Story Not Found</div>;
@@ -52,12 +59,12 @@ const BlogDetails = () => {
 
         {/* Hero Text Content */}
         <div className="absolute inset-0 flex flex-col items-center justify-center text-white px-6 mt-20">
-           <span className="bg-[#a88d5e] px-6 py-2 text-[11px] font-bold uppercase tracking-[0.5em] mb-8 shadow-2xl animate-fade-in">
-             {blog.category || "Lifestyle"}
-           </span>
-           <h1 className="text-4xl md:text-6xl font-serif italic text-center max-w-5xl leading-[1.1] drop-shadow-2xl">
-             {blog.title}
-           </h1>
+          <span className="bg-[#a88d5e] ...">
+  {cleanText(blog.category) || "Lifestyle"}
+</span>
+<h1 className="text-4xl ...">
+  {cleanText(blog.title)}
+</h1>
            
            {/* Bottom Hero Meta */}
            <div className="absolute bottom-12 flex items-center gap-10 text-[10px] font-bold uppercase tracking-[0.3em] text-gray-300">
@@ -92,13 +99,13 @@ const BlogDetails = () => {
 
         {/* Article Content with Premium Typography */}
         <article className="prose prose-neutral max-w-none">
-          <div 
-            className="font-serif text-[22px] leading-[2] text-[#333] 
-                       first-letter:text-8xl first-letter:font-bold first-letter:mr-4 
-                       first-letter:float-left first-letter:text-[#a88d5e] first-letter:mt-3
-                       selection:bg-[#a88d5e]/30"
-            dangerouslySetInnerHTML={{ __html: blog.content }}
-          />
+         <div 
+    className="rich-text-content font-serif text-[22px] leading-[2] text-[#333] 
+               [&_p:first-of-type]:first-letter:text-8xl [&_p:first-of-type]:first-letter:font-bold 
+               [&_p:first-of-type]:first-letter:mr-4 [&_p:first-of-type]:first-letter:float-left 
+               [&_p:first-of-type]:first-letter:text-[#a88d5e] [&_p:first-of-type]:first-letter:mt-3"
+    dangerouslySetInnerHTML={{ __html: blog.content }}
+  />
         </article>
 
         {/* Elegant End Marker */}
