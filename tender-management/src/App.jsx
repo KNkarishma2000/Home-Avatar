@@ -4,7 +4,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import PublicLayout from './layouts/PublicLayout';
 import DashboardLayout from './layouts/DashboardLayout';
 import { Toaster } from 'react-hot-toast';
-
+import UpdatedAttendanceSync from './pages/accountant/UpdatedAttendanceSync';
 import Login from './pages/auth/Login';
 import LoginSupplier from './pages/auth/LoginSupplier';
 import RegisterResident from './pages/auth/ResidentRegister';
@@ -88,6 +88,7 @@ function App() {
   
   {/* FIXED: Removed the leading slash from googledrive */}
   <Route path="googledrive" element={<AccountantDriveSearch />} />
+    <Route path="updatedattendance" element={<UpdatedAttendanceSync />} />
     <Route path="attendance" element={<AttendanceSync />} />
       <Route path="export" element={<RawDataSync />} />
        <Route path="invoices" element={<InvoiceExtractor />} />
