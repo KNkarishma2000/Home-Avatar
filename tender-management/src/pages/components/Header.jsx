@@ -121,7 +121,7 @@ const Header = () => {
             exit={{ opacity: 0, y: -20 }}
             className="fixed inset-0 w-full h-screen bg-[#1f1b16] z-[90] flex flex-col items-center justify-center p-8"
           >
-            <div className="flex flex-col gap-8 text-center">
+            <div className="flex flex-col gap-8 mt-5 text-center">
               {navLinks.map((item) => (
                 <Link
                   key={item.path}
@@ -137,15 +137,7 @@ const Header = () => {
               
               <div className="w-12 h-[1px] bg-[#a88d5e]/30 mx-auto my-4"></div>
               
-              {!token && (
-                <Link 
-                  to="/login" 
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="text-[#a88d5e] text-lg font-bold uppercase tracking-[0.4em]"
-                >
-                  Member Login
-                </Link>
-              )}
+           
             </div>
           </motion.div>
         )}
