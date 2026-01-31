@@ -6,59 +6,68 @@ import Header from '../components/Header';
 import Footer from '../components/Footer';
 
 export default function LoginSupplier() {
-  const navigate = useNavigate();
+ const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [formData, setFormData] = useState({ email: '', password: '' });
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
-    if (error) setError('');
+    if (error) setError(''); // Clear error when user types
   };
+// 1. ADD SESSION CHECK HERE
+useEffect(() => {
+  const token = localStorage.getItem('accessToken');
+  const role = localStorage.getItem('userRole');
+  
+  if (token) {
+    if (role === 'ADMIN') navigate('/admin/dashboard');
+    else if (role === 'RESIDENT') navigate('/dashboard/resident');
+    else if (role === 'ACCOUNTANT') navigate('/accountant/dashboard'); // Added this
+    else if (role === 'SUPPLIER') navigate('/supplier/portal');
+  }
+}, [navigate]);
+const handleLogin = async (e) => {
+  e.preventDefault(); 
+  setLoading(true);
+  setError('');
 
-  useEffect(() => {
-    const token = localStorage.getItem('accessToken');
-    const role = localStorage.getItem('userRole');
-    if (token) {
-      if (role === 'ADMIN') navigate('/admin/dashboard');
-      else if (role === 'RESIDENT') navigate('/dashboard/resident');
-      else if (role === 'ACCOUNTANT') navigate('/accountant/dashboard');
-      else if (role === 'SUPPLIER') navigate('/supplier/portal');
-    }
-  }, [navigate]);
+  try {
+    const response = await authAPI.login({ 
+      email: formData.email, 
+      password: formData.password 
+    });
 
-  const handleLogin = async (e) => {
-    e.preventDefault(); 
-    setLoading(true);
-    setError('');
+    const { accessToken, user } = response.data;
 
-    try {
-      const response = await authAPI.login({ 
-        email: formData.email, 
-        password: formData.password 
-      });
-
-      const { accessToken, user } = response.data;
-
-      if (user.role !== 'SUPPLIER') {
-        setError("Unauthorized. This portal is reserved for verified suppliers.");
-        setLoading(false);
-        return;
-      }
-
-      localStorage.setItem('accessToken', accessToken);
-      localStorage.setItem('userRole', user.role);
-      localStorage.setItem('userEmail', user.email);
-      localStorage.setItem('internal_user_id', user.id); 
-      localStorage.setItem('profile_id', user.profile_id); 
-
-      navigate('/supplier/portal');
-    } catch (err) {
-      setError(err.response?.data?.message || "Authentication failed.");
-    } finally {
+    if (user.role !== 'SUPPLIER') {
+      setError("Access denied. This portal is for Suppliers only.");
       setLoading(false);
+      return;
     }
-  };
+
+    // --- ESSENTIAL STORAGE FOR CHAT & AUTH ---
+    localStorage.setItem('accessToken', accessToken);
+    localStorage.setItem('userRole', user.role);
+    localStorage.setItem('userEmail', user.email);
+    localStorage.setItem('userStatus', user.status || 'PENDING');
+
+    // 1. This is the UUID from the 'users' table (Needed for the Chat Controller)
+    localStorage.setItem('internal_user_id', user.id); 
+
+    // 2. This is the ID from the 'suppliers' table (Needed for Tenders/Bids)
+    localStorage.setItem('profile_id', user.profile_id); 
+    
+    // Fallback if your code specifically looks for 'userId' elsewhere
+    localStorage.setItem('userId', user.profile_id); 
+
+    navigate('/supplier/portal');
+  } catch (err) {
+    setError(err.response?.data?.message || "Login failed.");
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="bg-[#fbfbfb] min-h-screen">
