@@ -46,14 +46,14 @@ const Header = () => {
         <nav className="bg-[#1f1b16]/80 backdrop-blur-xl border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.3)] rounded-full px-3 py-2 flex items-center justify-between w-full max-w-6xl transition-all duration-500 pointer-events-auto">
           
           {/* Logo Section */}
-          <Link to="/" className="flex items-center gap-3  group">
-         
-                  <img
-            src={LOGO}
-            alt="logo"
-            className="w-[110px] sm:w-[36px] md:w-[150px]"
-          />
-          </Link>
+          <Link to="/" className="flex items-center group ml-2 mr-4 shrink-0">
+      <img
+        src={LOGO}
+        alt="logo"
+       
+        className="w-[90px] sm:w-[36px] md:w-[150px] object-contain"
+      />
+    </Link>
 
           {/* Desktop Links */}
           <div className="hidden md:flex items-center gap-1">
