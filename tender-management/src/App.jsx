@@ -52,6 +52,7 @@ import SupplierProfile from './pages/tenders/SupplierProfile';
 
 import WindsorLiving from './layouts/PublicLayout';
 import Marketplace from './layouts/MarketPlace';
+import ContentModeration from './pages/admin/submissions';
 
 
 
@@ -108,6 +109,7 @@ function App() {
         <Route path="dashboard" element={<AdminDashboard />} />
         <Route path="carnivals" element={<Carnivals />} />
         <Route path="residents" element={<ResidentManagement />} /> 
+         <Route path="approvals" element={<ContentModeration />} /> 
         <Route path="notices" element={<NoticeManagement />} /> 
          <Route path="suppliers" element={<SupplierDirectory />} /> 
          // Example Route setup
