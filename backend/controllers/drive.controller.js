@@ -260,13 +260,27 @@ const getInvoiceHistory = async (req, res) => {
 };
 const processReconciliation = async (req, res) => {
   try {
-    const { excel_sheet, start_date, end_date, phase1, phase2 } = req.body;
+    // 1. FIXED DESTRUCTURING: These must match the keys in 'exactPayload' from frontend
+    const { 
+      "serial no": serial_no, 
+      "excel sheet": excel_sheet, 
+      "Date": start_date, 
+      "end date": end_date, 
+      "Elementorphase1": phase1, 
+      "Elementorphase2": phase2 
+    } = req.body;
 
-    // YOUR RECONCILIATION WEBHOOK
+    // Validate if data exists before calling n8n
+    if (!serial_no || !excel_sheet) {
+      return res.status(400).json({ success: false, message: "Missing required fields in request body" });
+    }
+
     const n8nUrl = 'https://n8n.srv1267492.hstgr.cloud/webhook/5913f8ca-e09c-457a-842a-78035ba46b34';
 
-    // A. Forward to n8n with the EXACT JSON structure you provided
+    // 2. Forward to n8n (Using the variables extracted above)
+    // We send them back with the exact keys n8n expects
     const n8nResponse = await axios.post(n8nUrl, {
+      "serial no": serial_no,
       "excel sheet": excel_sheet,
       "Date": start_date,
       "end date": end_date,
@@ -276,16 +290,17 @@ const processReconciliation = async (req, res) => {
 
     const result = Array.isArray(n8nResponse.data) ? n8nResponse.data[0] : n8nResponse.data;
 
-    // B. Store result in Supabase (Using the URLs for record keeping)
+    // 3. Store result in Supabase
     const { data, error } = await supabase
       .from('reconciliation_syncs')
       .insert([{
+        serial_no: serial_no, 
         main_excel_url: excel_sheet,
         start_date: start_date,
         end_date: end_date,
         phase1_url: phase1,
         phase2_url: phase2,
-        reconciliation_sheet_url: result.Reconcilation_sheet, // Ensure these match n8n output keys
+        reconciliation_sheet_url: result.Reconcilation_sheet, 
         elemensor_final_sheet_url: result.Elemensorfinal_sheet,
         status: 'PROCESSED'
       }])
@@ -296,7 +311,7 @@ const processReconciliation = async (req, res) => {
 
   } catch (error) {
     console.error('Reconciliation Error:', error.message);
-    res.status(500).json({ success: false, error: "Reconciliation sync failed" });
+    res.status(500).json({ success: false, error: "Reconciliation sync failed", details: error.message });
   }
 };
 
@@ -422,45 +437,51 @@ const getBankHistory = async (req, res) => {
 // DON'T FORGET TO EXPORT THEM
 const processZohoVsElemensor = async (req, res) => {
   try {
-    // 1. Destructure based on your required JSON keys
+    // 1. Destructure exactly what the Frontend is sending
     const { 
       filename, 
       elemensor_file, 
-      sep_file, 
       zoho_balance_sheet, 
-      start_date, // from frontend
-      end_date    // from frontend
+      start_date, 
+      end_date 
     } = req.body;
 
     // 2. Create the record in Supabase
+    // Note: 'sep_url' is set to null as it was removed from the UI
     const { data: record, error: dbError } = await supabase
       .from('zoho_elemensor_syncs')
       .insert([{
         filename,
         elemensor_url: elemensor_file,
-        sep_url: sep_file,
+        sep_url: null, 
         zoho_url: zoho_balance_sheet,
-        start_date, // Store these for history
+        start_date,
         end_date,
         status: 'PROCESSING'
       }])
       .select()
       .single();
 
-    if (dbError) throw dbError;
+    if (dbError) {
+      console.error("Supabase Error:", dbError.message);
+      throw dbError;
+    }
 
-    // 3. Trigger n8n with EXACT keys from your sample
+    // 3. Trigger n8n Webhook
     const n8nUrl = 'https://n8n.srv1267492.hstgr.cloud/webhook/230f20ac-49c7-4cda-9bd1-272fe6c493dd';
     
+    // Using the exact keys your n8n workflow likely expects
     axios.post(n8nUrl, {
       "file name": filename,
       "elemensor file": elemensor_file,
-      "sep file": sep_file,
       "zoho-balance sheet": zoho_balance_sheet,
-      "start Date": start_date, // Matches your JSON key (space + Capital D)
-      "end_date": end_date,     // Matches your JSON key (underscore)
+      "start Date": start_date, 
+      "end_date": end_date,
       "db_record_id": record.id 
-    }).catch(err => console.error("n8n Background Error:", err.message));
+    }).catch(err => {
+      // Catching this separately so if n8n is down, the API still responds to user
+      console.error("n8n Background Error:", err.message);
+    });
 
     res.status(200).json({ 
       success: true, 
@@ -469,7 +490,12 @@ const processZohoVsElemensor = async (req, res) => {
     });
 
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error('Zoho-Elemensor Controller Error:', error.message);
+    res.status(500).json({ 
+      success: false, 
+      error: "Internal Server Error",
+      details: error.message 
+    });
   }
 };
 const getZohoVsElemensorHistory = async (req, res) => {
