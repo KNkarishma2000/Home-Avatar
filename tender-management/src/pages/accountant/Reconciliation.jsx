@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { financeAPI } from '../../api/auth.service';
-import { Play, FileSpreadsheet, Loader2, Calendar, FileText, ExternalLink, CheckCircle } from 'lucide-react';
+import { Play, FileSpreadsheet, Loader2, Calendar, FileText, ExternalLink, CheckCircle, Hash } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function Reconciliation() {
@@ -11,13 +11,13 @@ export default function Reconciliation() {
     start_date: '',  
     end_date: '',    
     phase1: '',      
-    phase2: ''       
+    phase2: '',
+    serial_no: '' 
   });
 
   const fetchHistory = async () => {
     try {
       const { data } = await financeAPI.getReconciliationHistory();
-      // Ensure we are setting the data array from the backend response
       if (data.success) setHistory(data.data);
     } catch (err) {
       console.error("Failed to fetch history", err);
@@ -32,11 +32,29 @@ export default function Reconciliation() {
     const loadToast = toast.loading("Processing Reconciliation...");
 
     try {
-      const { data } = await financeAPI.processReconciliation(formData);
+      // --- CRITICAL UPDATE: MAPPING TO EXACT JSON KEYS ---
+      const exactPayload = {
+        "serial no": formData.serial_no,
+        "excel sheet": formData.excel_sheet,
+        "Date": formData.start_date, // Mapped to "Date" (Capital D)
+        "end date": formData.end_date,
+        "Elementorphase1": formData.phase1,
+        "Elementorphase2": formData.phase2
+      };
+
+      const { data } = await financeAPI.processReconciliation(exactPayload);
+      
       if (data.success) {
         toast.success("Sync Complete!", { id: loadToast });
         fetchHistory();
-        setFormData({ excel_sheet: '', start_date: '', end_date: '', phase1: '', phase2: '' });
+        setFormData({ 
+          excel_sheet: '', 
+          start_date: '', 
+          end_date: '', 
+          phase1: '', 
+          phase2: '',
+          serial_no: '' 
+        });
       }
     } catch (err) {
       toast.error("Reconciliation failed", { id: loadToast });
@@ -45,13 +63,9 @@ export default function Reconciliation() {
     }
   };
 
-  /**
-   * Helper to format "YYYY-MM-DD" to a cleaner "DD MMM YYYY" if desired, 
-   * or just return the "Start - End" string.
-   */
-  const formatSheetName = (start, end) => {
-    if (!start || !end) return "RECONCILIATION BATCH";
-    return `${start} — ${end}`;
+  const formatSheetName = (start, end, sn) => {
+    const period = (!start || !end) ? "BATCH" : `${start} — ${end}`;
+    return sn ? `${sn} | ${period}` : period;
   };
 
   return (
@@ -59,7 +73,23 @@ export default function Reconciliation() {
       {/* --- RECONCILIATION INPUT FORM --- */}
       <div className="bg-white p-8 rounded-3xl border border-neutral-200 shadow-sm">
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {/* SERIAL NUMBER INPUT */}
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-neutral-600 ml-1">Serial No.</label>
+              <div className="relative">
+                <Hash className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" size={16} />
+                <input 
+                  type="text" 
+                  placeholder="e.g. 268827" 
+                  className="w-full pl-11 p-4 bg-neutral-50 rounded-2xl border border-neutral-200 outline-none font-medium text-sm focus:ring-2 ring-blue-500"
+                  value={formData.serial_no}
+                  onChange={e => setFormData({...formData, serial_no: e.target.value})}
+                  required 
+                />
+              </div>
+            </div>
+
             <div className="md:col-span-1 space-y-2">
               <label className="text-sm font-bold text-neutral-600 ml-1">Blockwise Sheet URL</label>
               <input 
@@ -70,6 +100,7 @@ export default function Reconciliation() {
                 required 
               />
             </div>
+
             <div className="space-y-2">
               <label className="text-sm font-bold text-neutral-600 ml-1">Start Date</label>
               <input 
@@ -80,6 +111,7 @@ export default function Reconciliation() {
                 required 
               />
             </div>
+
             <div className="space-y-2">
               <label className="text-sm font-bold text-neutral-600 ml-1">End Date</label>
               <input 
@@ -125,7 +157,7 @@ export default function Reconciliation() {
         </form>
       </div>
 
-      {/* --- RECENT SYNC HISTORY TABLE --- */}
+      {/* --- HISTORY TABLE REMAINS THE SAME --- */}
       <div className="bg-white rounded-3xl border border-neutral-200 shadow-sm overflow-hidden">
         <div className="px-8 py-5 border-b border-neutral-100 bg-neutral-50/50 flex justify-between items-center">
           <h3 className="text-sm font-black text-neutral-800 uppercase tracking-widest">Recent Sync History</h3>
@@ -137,7 +169,7 @@ export default function Reconciliation() {
           <thead className="bg-white border-b border-neutral-200">
             <tr>
               <th className="p-6 w-20 text-[10px] font-black text-neutral-400 uppercase tracking-widest text-center">No.</th>
-              <th className="p-6 text-[10px] font-black text-neutral-400 uppercase tracking-widest">Sheet Name (Selected Period)</th>
+              <th className="p-6 text-[10px] font-black text-neutral-400 uppercase tracking-widest">Batch Info (Serial & Period)</th>
               <th className="p-6 text-[10px] font-black text-neutral-400 uppercase tracking-widest text-right">Output Sheets</th>
             </tr>
           </thead>
@@ -146,7 +178,6 @@ export default function Reconciliation() {
               <tr key={row.id} className="hover:bg-neutral-50/50 transition-colors group">
                 <td className="p-6 text-center font-black text-neutral-300 text-sm">{index + 1}</td>
                 
-                {/* DYNAMIC SHEET NAME USING DATABASE DATES */}
                 <td className="p-6">
                   <div className="flex items-center gap-4">
                     <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl group-hover:bg-blue-600 group-hover:text-white transition-all shadow-sm">
@@ -154,7 +185,7 @@ export default function Reconciliation() {
                     </div>
                     <div>
                       <div className="font-black text-neutral-800 text-sm uppercase tracking-tight">
-                        {formatSheetName(row.start_date, row.end_date)}
+                        {formatSheetName(row.start_date, row.end_date, row.serial_no)}
                       </div>
                       <div className="flex items-center gap-2 mt-1">
                          <span className="text-[9px] bg-green-100 text-green-700 px-2 py-0.5 rounded font-black uppercase tracking-tighter">
@@ -168,7 +199,6 @@ export default function Reconciliation() {
                   </div>
                 </td>
 
-                {/* OUTPUT BUTTONS */}
                 <td className="p-6">
                   <div className="flex justify-end gap-3">
                     <a href={row.reconciliation_sheet_url} target="_blank" rel="noreferrer" 

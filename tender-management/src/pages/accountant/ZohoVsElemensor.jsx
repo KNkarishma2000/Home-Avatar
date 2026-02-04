@@ -7,11 +7,10 @@ export default function ZohoVsElemensor() {
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState([]);
   
-  // ✅ UPDATED: Added start_date and end_date to state
+  // State updated to remove sep_file
   const [formData, setFormData] = useState({
     filename: '', 
     elemensor_file: '', 
-    sep_file: '', 
     zoho_balance_sheet: '',
     start_date: '', 
     end_date: ''
@@ -32,20 +31,20 @@ export default function ZohoVsElemensor() {
     e.preventDefault();
     setLoading(true);
     
-    // Create a notification for the long process
     const processingToast = toast.loading("Initializing 30-min analysis...");
 
     try {
-      // ✅ Sending the full formData including dates to the API
       const { data } = await financeAPI.processZohoVsElemensor(formData);
       
       if (data.success) {
         toast.success("Process started! Please check back in 30 minutes.", { id: processingToast });
         fetchHistory();
-        // Reset form
         setFormData({ 
-          filename: '', elemensor_file: '', sep_file: '', 
-          zoho_balance_sheet: '', start_date: '', end_date: '' 
+          filename: '', 
+          elemensor_file: '', 
+          zoho_balance_sheet: '', 
+          start_date: '', 
+          end_date: '' 
         });
       }
     } catch (err) {
@@ -107,22 +106,28 @@ export default function ZohoVsElemensor() {
             </div>
           </div>
 
-          {/* URL Inputs */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* URL Inputs - Simplified to 2 columns */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-[10px] font-black text-neutral-400 uppercase ml-2 text-indigo-500">Elemensor URL</label>
-              <input placeholder="https://docs.google..." className="w-full p-4 bg-neutral-50 rounded-2xl border border-neutral-200 text-sm outline-none" 
-                value={formData.elemensor_file} onChange={e => setFormData({...formData, elemensor_file: e.target.value})} required />
+              <input 
+                placeholder="https://docs.google..." 
+                className="w-full p-4 bg-neutral-50 rounded-2xl border border-neutral-200 text-sm outline-none" 
+                value={formData.elemensor_file} 
+                onChange={e => setFormData({...formData, elemensor_file: e.target.value})} 
+                required 
+              />
             </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-neutral-400 uppercase ml-2 text-indigo-500">SEP URL</label>
-              <input placeholder="https://docs.google..." className="w-full p-4 bg-neutral-50 rounded-2xl border border-neutral-200 text-sm outline-none"
-                value={formData.sep_file} onChange={e => setFormData({...formData, sep_file: e.target.value})} required />
-            </div>
+          
             <div className="space-y-2">
               <label className="text-[10px] font-black text-neutral-400 uppercase ml-2 text-indigo-500">Zoho BS URL</label>
-              <input placeholder="https://docs.google..." className="w-full p-4 bg-neutral-50 rounded-2xl border border-neutral-200 text-sm outline-none"
-                value={formData.zoho_balance_sheet} onChange={e => setFormData({...formData, zoho_balance_sheet: e.target.value})} required />
+              <input 
+                placeholder="https://docs.google..." 
+                className="w-full p-4 bg-neutral-50 rounded-2xl border border-neutral-200 text-sm outline-none"
+                value={formData.zoho_balance_sheet} 
+                onChange={e => setFormData({...formData, zoho_balance_sheet: e.target.value})} 
+                required 
+              />
             </div>
           </div>
 
