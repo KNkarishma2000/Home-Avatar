@@ -10,7 +10,7 @@ const oauth2Client = new google.auth.OAuth2(
 
 // Set the permanent refresh token
 oauth2Client.setCredentials({
-refresh_token: process.env.GMAIL_REFRESH_TOKEN
+  refresh_token: process.env.GMAIL_REFRESH_TOKEN
 });
 
 const drive = google.drive({ version: 'v3', auth: oauth2Client });
@@ -127,24 +127,42 @@ const getAttendanceHistory = async (req, res) => {
 };
 // Add this to your existing drive.controller.js
 const processRawDataToExcel = async (req, res) => {
+  let initialRecordId = null;
   try {
-    // Destructure the names used by the Frontend
     const { filename, neft_file, pos_file, mygate_file } = req.body;
 
     if (!filename || !neft_file || !pos_file || !mygate_file) {
       return res.status(400).json({ success: false, message: "Missing required files" });
     }
 
+    // 1. IMMEDIATELY create a record in Supabase with status 'PROCESSING'
+    // This ensures that even if the user refreshes or leaves the page, the "Busy" state is saved.
+    const { data: initialData, error: initialError } = await supabase
+      .from('raw_data_exports')
+      .insert([{
+        filename: filename,
+        neft_url: neft_file,
+        pos_url: pos_file,
+        mygate_url: mygate_file,
+        status: 'PROCESSING' // Set status to processing immediately
+      }])
+      .select()
+      .single();
+
+    if (initialError) throw initialError;
+    initialRecordId = initialData.id;
+
+    // 2. Trigger the n8n Webhook
     const n8nUrl = 'https://n8n.srv1267492.hstgr.cloud/webhook/a3da1ea4-d113-4d3b-87bc-a96a1cf3629d';
     
-    // Send data to n8n with the EXACT keys you requested
     const n8nResponse = await axios.post(n8nUrl, {
       "filename": filename,
-      "neft file": neft_file, // Key with space
-      "pos file": pos_file,   // Key with space
-      "mygate": mygate_file   // Key changed from mygate_file to mygate
-    }, { timeout: 0 });
+      "neft file": neft_file,
+      "pos file": pos_file,
+      "mygate": mygate_file
+    }, { timeout: 0 }); // timeout: 0 allows the request to stay open as long as needed
 
+    // 3. Parse n8n Result
     const result = Array.isArray(n8nResponse.data) ? n8nResponse.data[0] : n8nResponse.data;
     const finalExcelLink = result.excel_link || result.output_url || Object.values(result)[0];
 
@@ -152,29 +170,38 @@ const processRawDataToExcel = async (req, res) => {
       throw new Error("n8n did not return a valid Excel link.");
     }
 
-    // Save to Supabase using your standard DB column names
-    const { data, error } = await supabase
+    // 4. UPDATE the existing record to 'COMPLETED' with the link
+    const { data: finalData, error: updateError } = await supabase
       .from('raw_data_exports')
-      .insert([{
-        filename: filename,
-        neft_url: neft_file,
-        pos_url: pos_file,
-        mygate_url: mygate_file,
+      .update({
         output_excel_url: finalExcelLink,
         status: 'COMPLETED'
-      }])
+      })
+      .eq('id', initialRecordId)
       .select();
 
-    if (error) throw error;
+    if (updateError) throw updateError;
 
-    res.status(200).json({ success: true, data: data[0] });
+    res.status(200).json({ success: true, data: finalData[0] });
 
   } catch (error) {
     console.error('Raw Data Sync Error:', error.message);
-    res.status(500).json({ success: false, error: error.message });
+    
+    // Optional: If we created a record but then it failed, mark it as FAILED in DB
+    if (initialRecordId) {
+      await supabase
+        .from('raw_data_exports')
+        .update({ status: 'FAILED' })
+        .eq('id', initialRecordId);
+    }
+
+    res.status(500).json({ 
+      success: false, 
+      message: "Processing failed", 
+      error: error.message 
+    });
   }
 };
-
 // Add a history fetcher for the Raw Data table
 const getRawDataHistory = async (req, res) => {
   try {
@@ -190,6 +217,8 @@ const getRawDataHistory = async (req, res) => {
   }
 };
 const processInvoiceExtraction = async (req, res) => {
+  let initialRecordId = null;
+
   try {
     const { folder_name, folder_url } = req.body;
 
@@ -197,48 +226,64 @@ const processInvoiceExtraction = async (req, res) => {
       return res.status(400).json({ success: false, message: "Folder name and link are required" });
     }
 
+    // 1. Create a record with status 'PROCESSING'
+    const { data: initialData, error: initialError } = await supabase
+      .from('invoice_extractions')
+      .insert([{
+        folder_name: folder_name,
+        folder_url: folder_url,
+        status: 'PROCESSING'
+      }])
+      .select()
+      .single();
+
+    if (initialError) throw initialError;
+    initialRecordId = initialData.id;
+
     const n8nUrl = 'https://n8n.srv1267492.hstgr.cloud/webhook/f844e506-030a-425c-b92e-1dc7fcc3b419';
 
-    // A. Forward to n8n
+    // 2. Forward to n8n (If you stop execution in n8n, this will throw an error)
     const n8nResponse = await axios.post(n8nUrl, {
       "filename": folder_name,
       "filelink": folder_url 
     }, { timeout: 0 });
 
-    // Ensure we have data
     const result = Array.isArray(n8nResponse.data) ? n8nResponse.data[0] : n8nResponse.data;
     
-    // Safety check: if result is null or undefined, finalLink will fail
-    if (!result) {
-        throw new Error("n8n returned an empty response.");
-    }
+    if (!result) throw new Error("n8n returned an empty response.");
 
     const finalLink = result.final_link || result.output_url || (Object.values(result).length > 0 ? Object.values(result)[0] : null);
 
-    if (!finalLink) {
-        throw new Error("Could not find a download link in n8n response.");
-    }
+    if (!finalLink) throw new Error("Could not find a download link in n8n response.");
 
-    // B. Store in Supabase
-    const { data, error } = await supabase
+    // 3. Update status to 'COMPLETED'
+    const { data: finalData, error: finalError } = await supabase
       .from('invoice_extractions')
-      .insert([{
-        folder_name: folder_name,
-        folder_url: folder_url,
+      .update({
         extracted_output_url: finalLink,
         status: 'COMPLETED'
-      }])
+      })
+      .eq('id', initialRecordId)
       .select();
 
-    if (error) throw error;
-    res.status(200).json({ success: true, data: data[0] });
+    if (finalError) throw finalError;
+    
+    res.status(200).json({ success: true, data: finalData[0] });
 
   } catch (error) {
-    // This will now print the EXACT reason in your terminal
-    console.error('Invoice Extraction Error:', error.response?.data || error.message);
+    console.error('Invoice Extraction Error:', error.message);
+    
+    // 4. Update status to 'FAILED' if the process was interrupted
+    if (initialRecordId) {
+      await supabase
+        .from('invoice_extractions')
+        .update({ status: 'FAILED' })
+        .eq('id', initialRecordId);
+    }
+
     res.status(500).json({ 
         success: false, 
-        error: "Failed to process invoices",
+        error: "Process failed or was stopped",
         details: error.message 
     });
   }
@@ -436,24 +481,17 @@ const getBankHistory = async (req, res) => {
 };
 // DON'T FORGET TO EXPORT THEM
 const processZohoVsElemensor = async (req, res) => {
-  try {
-    // 1. Destructure exactly what the Frontend is sending
-    const { 
-      filename, 
-      elemensor_file, 
-      zoho_balance_sheet, 
-      start_date, 
-      end_date 
-    } = req.body;
+  let initialRecordId = null;
 
-    // 2. Create the record in Supabase
-    // Note: 'sep_url' is set to null as it was removed from the UI
-    const { data: record, error: dbError } = await supabase
+  try {
+    const { filename, elemensor_file, zoho_balance_sheet, start_date, end_date } = req.body;
+
+    // 1. IMMEDIATELY create a record in Supabase with status 'PROCESSING'
+    const { data: initialData, error: initialError } = await supabase
       .from('zoho_elemensor_syncs')
       .insert([{
         filename,
         elemensor_url: elemensor_file,
-        sep_url: null, 
         zoho_url: zoho_balance_sheet,
         start_date,
         end_date,
@@ -462,40 +500,51 @@ const processZohoVsElemensor = async (req, res) => {
       .select()
       .single();
 
-    if (dbError) {
-      console.error("Supabase Error:", dbError.message);
-      throw dbError;
-    }
+    if (initialError) throw initialError;
+    initialRecordId = initialData.id;
 
-    // 3. Trigger n8n Webhook
+    // 2. Trigger n8n Webhook and WAIT
     const n8nUrl = 'https://n8n.srv1267492.hstgr.cloud/webhook/230f20ac-49c7-4cda-9bd1-272fe6c493dd';
     
-    // Using the exact keys your n8n workflow likely expects
-    axios.post(n8nUrl, {
+    const n8nResponse = await axios.post(n8nUrl, {
       "file name": filename,
       "elemensor file": elemensor_file,
       "zoho-balance sheet": zoho_balance_sheet,
       "start Date": start_date, 
-      "end_date": end_date,
-      "db_record_id": record.id 
-    }).catch(err => {
-      // Catching this separately so if n8n is down, the API still responds to user
-      console.error("n8n Background Error:", err.message);
-    });
+      "end_date": end_date
+    }, { timeout: 0 });
 
-    res.status(200).json({ 
-      success: true, 
-      message: "Sync started. Process takes ~30 mins.",
-      data: record 
-    });
+    const result = Array.isArray(n8nResponse.data) ? n8nResponse.data[0] : n8nResponse.data;
+    const finalOutput = result.output_url || result.final_link || Object.values(result)[0];
+
+    if (!finalOutput) throw new Error("n8n did not return a valid output link.");
+
+    // 3. Update the record to 'COMPLETED'
+    const { data: finalData, error: finalError } = await supabase
+      .from('zoho_elemensor_syncs')
+      .update({
+        output_url: finalOutput,
+        status: 'COMPLETED'
+      })
+      .eq('id', initialRecordId)
+      .select();
+
+    if (finalError) throw finalError;
+
+    res.status(200).json({ success: true, data: finalData[0] });
 
   } catch (error) {
-    console.error('Zoho-Elemensor Controller Error:', error.message);
-    res.status(500).json({ 
-      success: false, 
-      error: "Internal Server Error",
-      details: error.message 
-    });
+    console.error('Zoho-Elemensor Error:', error.message);
+    
+    // 4. Update status to 'FAILED' if the process was interrupted
+    if (initialRecordId) {
+      await supabase
+        .from('zoho_elemensor_syncs')
+        .update({ status: 'FAILED' })
+        .eq('id', initialRecordId);
+    }
+
+    res.status(500).json({ success: false, error: "Analysis failed", details: error.message });
   }
 };
 const getZohoVsElemensorHistory = async (req, res) => {
@@ -612,4 +661,3 @@ module.exports = {
    processZohoVsElemensor
       // <--- ADD THIS
 };
-
