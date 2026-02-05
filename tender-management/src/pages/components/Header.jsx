@@ -61,7 +61,7 @@ const Header = () => {
               <Link
                 key={item.path}
                 to={item.path}
-                className={`px-6 py-2.5 rounded-full text-[10px] font-bold uppercase tracking-[0.2em] transition-all duration-300 ${
+                className={`px-5 py-2.5 rounded-full text-[10px] font-bold uppercase tracking-[0.2em] transition-all duration-300 ${
                   isActive(item.path) 
                   ? 'text-[#a88d5e] bg-white/5' 
                   : 'text-gray-400 hover:text-white hover:bg-white/5'

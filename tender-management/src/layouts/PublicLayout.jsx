@@ -14,7 +14,15 @@ const WindsorLiving = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-  
+  const menuLinks = [
+  { name: "HOME", url: "/" },
+  { name: "NOTICES", url: "/notices" },
+  { name: "MARKETPLACE", url: "/marketplace" },
+  { name: "CARNIVAL", url: "/carnival" },
+  { name: "GALLERY", url: "/gallery" },
+  { name: "BLOG", url: "/blog" }
+];
+
   const [notices, setNotices] = useState([]);
   const [marketplace, setMarketplace] = useState([]);
   const [carnivals, setCarnivals] = useState([]);
@@ -123,6 +131,7 @@ const WindsorLiving = () => {
       </AnimatePresence>
 
       {/* MOBILE MENU */}
+      
       <AnimatePresence>
         {isMenuOpen && (
           <motion.div initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }} className="fixed inset-0 bg-[#1f1b16] z-[2000] flex flex-col p-8">
@@ -131,9 +140,17 @@ const WindsorLiving = () => {
               <button onClick={() => setIsMenuOpen(false)} className="text-[#a88d5e]"><X size={28} /></button>
             </div>
             <nav className="flex flex-col space-y-6"> 
-              {['HOME', 'NOTICES', 'MARKETPLACE', 'CARNIVAL', 'GALLERY', 'BLOGS'].map((name) => (
-                <a key={name} href={`/${name.toLowerCase()}`} onClick={() => setIsMenuOpen(false)} className="text-white text-xl font-serif tracking-[0.2em] border-b border-white/5 pb-2">{name}</a>
-              ))}
+            {menuLinks.map((item) => (
+  <a
+    key={item.name}
+    href={item.url}
+    onClick={() => setIsMenuOpen(false)}
+    className="text-white text-xl font-serif tracking-[0.2em] border-b border-white/5 pb-2"
+  >
+    {item.name}
+  </a>
+))}
+
             </nav>
           </motion.div>
         )}
