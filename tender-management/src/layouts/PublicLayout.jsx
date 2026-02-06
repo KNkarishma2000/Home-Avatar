@@ -18,7 +18,7 @@ const WindsorLiving = () => {
   { name: "HOME", url: "/" },
   { name: "NOTICES", url: "/notices" },
   { name: "MARKETPLACE", url: "/marketplace" },
-  { name: "CARNIVAL", url: "/carnival" },
+  { name: "CARNIVAL", url: "/carnivals" },
   { name: "GALLERY", url: "/gallery" },
   { name: "BLOG", url: "/blog" }
 ];
@@ -351,5 +351,6 @@ const NewsCard = ({ id, img, date, title, desc }) => (
     </motion.div>
   </a>
 );
+
 
 export default WindsorLiving;
